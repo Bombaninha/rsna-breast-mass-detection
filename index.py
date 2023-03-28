@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from skimage import exposure
 
-image_path = './dataset/AllDICOMs/20586908_6c613a14b80a8591_MG_R_CC_ANON.dcm'
+image_path = './INbreast Release 1.0/AllDICOMs/20586908_6c613a14b80a8591_MG_R_CC_ANON.dcm'
 
 ds = dicom.dcmread(image_path)
 dcm_sample = ds.pixel_array
