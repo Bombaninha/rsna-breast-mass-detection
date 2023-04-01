@@ -123,8 +123,8 @@ if __name__ == "__main__":
             original, synthetized, mass_mask = synthetized_images(patient_id, suffix)
 
             synthetized = cv2.cvtColor(synthetized, cv2.COLOR_BGR2RGB)
-            cv2.imwrite(patient_id + '_synthetized.jpeg', synthetized.astype(np.uint8))
-            cv2.imwrite(patient_id + '_mask.jpeg', (mass_mask*255).astype(np.uint8))
+            cv2.imwrite('results/' + patient_id + '_synthetized.jpeg', synthetized.astype(np.uint8))
+            cv2.imwrite('results/' + patient_id + '_mask.jpeg', (mass_mask*255).astype(np.uint8))
     
     # synthetized = cv2.cvtColor(synthetized, cv2.COLOR_BGR2RGB)
 
