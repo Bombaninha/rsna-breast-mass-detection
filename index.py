@@ -2,14 +2,15 @@ import pydicom as dicom
 import matplotlib.pylab as plt
 import cv2   
 import numpy as np
-from skimage import exposure
+import pandas as pd
 import glob
 import os
 import plistlib
+from skimage import exposure
 from skimage.draw import polygon
 
-DCM_PATH = 'INbreast Release 1.0/AllDICOMs/'
-XML_PATH = 'INbreast Release 1.0/AllXML/'
+#DCM_PATH = 'INbreast Release 1.0/AllDICOMs/'
+DCM_PATH = 'data/AllDICOMs/'
 
 def load_inbreast_mask(mask_path, imshape=(4084, 3328)):
     """
@@ -47,7 +48,7 @@ def load_inbreast_mask(mask_path, imshape=(4084, 3328)):
                     mask[poly_x, poly_y] = i
     return mask
 
-def crop(img, mask):
+def crop(img):
     """
     Crop breast ROI from image.
     @img : numpy array image
@@ -64,7 +65,7 @@ def crop(img, mask):
     cnt = max(cnts, key = cv2.contourArea)
     x, y, w, h = cv2.boundingRect(cnt) 
 
-    return img[y:y+h, x:x+w], breast_mask[y:y+h, x:x+w], mask[y:y+h, x:x+w]
+    return img[y:y+h, x:x+w], breast_mask[y:y+h, x:x+w], (x, y, w, h)
 
 def truncation_normalization(img, mask):
     """
@@ -83,7 +84,7 @@ def contrast_enhancement(img, clip):
     cl = clahe.apply(np.array(img*255, dtype=np.uint8))
     return cl
 
-def processed_images(patient_id, suffix_path):
+def process_images(patient_id, suffix_path, orientation='R'):
     """
     Create a 3-channel image composed of the truncated and normalized image,
     the contrast enhanced image with clip limit 1, 
@@ -92,37 +93,62 @@ def processed_images(patient_id, suffix_path):
     return: numpy array of the breast region, numpy array of the synthetized images, numpy array of the masses mask
     """
     image_path = glob.glob(os.path.join(DCM_PATH, str(patient_id) + suffix_path))[0]
-    mass_mask = load_inbreast_mask(os.path.join(XML_PATH, str(patient_id) + '.xml'))
     ds = dicom.dcmread(image_path)
     pixel_array_numpy = ds.pixel_array
-    breast, mask, mass_mask = crop(pixel_array_numpy, mass_mask)
+    breast, mask, dims = crop(pixel_array_numpy)
     normalized = truncation_normalization(breast, mask)
 
-    cl1 = contrast_enhancement(normalized, 1.0)
-    cl2 = contrast_enhancement(normalized, 2.0)
-    #synthetized = normalized
-    synthetized = cv2.merge((np.array(normalized*255, dtype=np.uint8),cl1,cl2))
-    return breast, synthetized, mass_mask
+    #cl1 = contrast_enhancement(normalized, 1.0)
+    #cl2 = contrast_enhancement(normalized, 2.0)
+    
+    #synthetized = cv2.merge((np.array(normalized*255, dtype=np.uint8),cl1,cl2))
+    return breast, np.array(normalized*255, dtype=np.uint8), mask, dims
 
 if __name__ == "__main__":
     
+    max_w = 0
+    max_h = 0
+
     # Scan the file directory for all image files and get the patient_id and suffix_path from them:
     imgFileName_list = os.scandir(DCM_PATH)
-
+    orientation = []
     for imgFile in imgFileName_list:
         if(imgFile.path.find('.dcm') != -1):
             imgFileName = imgFile.path.split(DCM_PATH)[1]
             paths = imgFileName.split('_')
             patient_id = paths[0]
+            orientation.append(patient_id + '_' + paths[3])
             suffix = '_' + '_'.join(paths[1:])
-            print('Processing patient file: ' + patient_id + suffix)
+            #print('Processing patient file: ' + patient_id + suffix)
 
-            original, processed, mass_mask = processed_images(patient_id, suffix)
+            original, processed, mask, dims = process_images(patient_id, suffix, orientation)
+            max_w = max(dims[2], max_w)
+            max_h = max(dims[3], max_h)
 
-            processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
-            cv2.imwrite('results/' + patient_id + '_processed.jpeg', processed.astype(np.uint8))
-            cv2.imwrite('results/' + patient_id + '_mask.jpeg', (mass_mask*255).astype(np.uint8))
-    
+            #processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
+            cv2.imwrite('results/' + patient_id + '_processed.png', processed.astype(np.uint8))
+            #cv2.imwrite('results/' + patient_id + '_mask.png', (mask*255).astype(np.uint8))
+
+
+    for img in orientation:
+        lst_split = img.split('_')
+        patient_id = lst_split[0]
+        orient = lst_split[1]
+        processed_img = cv2.imread('results/' + patient_id + '_processed.png', cv2.IMREAD_UNCHANGED)
+        r, c = processed_img.shape
+        padding_r = max_h - r
+
+        if orient == 'R':
+            padding_w1 = max_w - c
+            padding_w2 = 0
+        else:
+            padding_w1 = 0
+            padding_w2 = max_w - c
+
+        processed_img = cv2.copyMakeBorder(processed_img, padding_r//2, padding_r//2, padding_w1, padding_w2, cv2.BORDER_CONSTANT, value = 0)
+        processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 5, processed_img.shape[0] // 5))
+        cv2.imwrite('results/' + patient_id + '_processed.png', processed_img.astype(np.uint8))
+        
     # synthetized = cv2.cvtColor(synthetized, cv2.COLOR_BGR2RGB)
 
     # cv2.namedWindow('Display', cv2.WINDOW_NORMAL)
