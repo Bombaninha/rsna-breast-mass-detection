@@ -3,3 +3,6 @@ numpy
 pydicom
 opencv-python
 sckikit-image
+torch
+torchvision
+# wf-pytorch-yolo-v4 # precisa das build tools do Visual Studio (C++ 14.0 ou superior)

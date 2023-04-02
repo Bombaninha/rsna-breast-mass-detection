@@ -62,7 +62,7 @@ def crop(img, mask):
     
     cnts, _ = cv2.findContours(breast_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnt = max(cnts, key = cv2.contourArea)
-    x, y, w, h = cv2.boundingRect(cnt)
+    x, y, w, h = cv2.boundingRect(cnt) 
 
     return img[y:y+h, x:x+w], breast_mask[y:y+h, x:x+w], mask[y:y+h, x:x+w]
 
@@ -72,18 +72,18 @@ def truncation_normalization(img, mask):
     """
     Pmin = np.percentile(img[mask!=0], 5)
     Pmax = np.percentile(img[mask!=0], 99)
-    truncated = np.clip(img,Pmin, Pmax)  
+    truncated = np.clip(img,Pmin, Pmax) 
     normalized = (truncated - Pmin) / (Pmax - Pmin)
     normalized[mask==0]=0
     return normalized
 
-def clahe(img, clip):
+def contrast_enhancement(img, clip):
     #contrast enhancement
     clahe = cv2.createCLAHE(clipLimit=clip)
     cl = clahe.apply(np.array(img*255, dtype=np.uint8))
     return cl
 
-def synthetized_images(patient_id, suffix_path):
+def processed_images(patient_id, suffix_path):
     """
     Create a 3-channel image composed of the truncated and normalized image,
     the contrast enhanced image with clip limit 1, 
@@ -98,17 +98,14 @@ def synthetized_images(patient_id, suffix_path):
     breast, mask, mass_mask = crop(pixel_array_numpy, mass_mask)
     normalized = truncation_normalization(breast, mask)
 
-    cl1 = clahe(normalized, 1.0)
-    cl2 = clahe(normalized, 2.0)
+    cl1 = contrast_enhancement(normalized, 1.0)
+    cl2 = contrast_enhancement(normalized, 2.0)
     #synthetized = normalized
     synthetized = cv2.merge((np.array(normalized*255, dtype=np.uint8),cl1,cl2))
     return breast, synthetized, mass_mask
 
 if __name__ == "__main__":
     
-    #patient_id = '20586934' #'20586908'
-    #suffix = '_6c613a14b80a8591_MG_L_CC_ANON.dcm' #'_6c613a14b80a8591_MG_R_CC_ANON.dcm'
-
     # Scan the file directory for all image files and get the patient_id and suffix_path from them:
     imgFileName_list = os.scandir(DCM_PATH)
 
@@ -120,10 +117,10 @@ if __name__ == "__main__":
             suffix = '_' + '_'.join(paths[1:])
             print('Processing patient file: ' + patient_id + suffix)
 
-            original, synthetized, mass_mask = synthetized_images(patient_id, suffix)
+            original, processed, mass_mask = processed_images(patient_id, suffix)
 
-            synthetized = cv2.cvtColor(synthetized, cv2.COLOR_BGR2RGB)
-            cv2.imwrite('results/' + patient_id + '_synthetized.jpeg', synthetized.astype(np.uint8))
+            processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
+            cv2.imwrite('results/' + patient_id + '_processed.jpeg', processed.astype(np.uint8))
             cv2.imwrite('results/' + patient_id + '_mask.jpeg', (mass_mask*255).astype(np.uint8))
     
     # synthetized = cv2.cvtColor(synthetized, cv2.COLOR_BGR2RGB)
