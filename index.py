@@ -105,7 +105,10 @@ def process_images(patient_id, suffix_path, orientation='R'):
     return breast, np.array(normalized*255, dtype=np.uint8), mask, dims
 
 if __name__ == "__main__":
-    
+
+    if not os.path.exists('results'):
+        os.mkdir('results')
+
     max_w = 0
     max_h = 0
 
