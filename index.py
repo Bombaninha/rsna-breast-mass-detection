@@ -109,6 +109,9 @@ if __name__ == "__main__":
     max_w = 0
     max_h = 0
 
+    df = pd.read_csv('data/INbreast.csv', delimiter=';')
+    print(df.head())
+
     # Scan the file directory for all image files and get the patient_id and suffix_path from them:
     imgFileName_list = os.scandir(DCM_PATH)
     orientation = []
@@ -117,7 +120,12 @@ if __name__ == "__main__":
             imgFileName = imgFile.path.split(DCM_PATH)[1]
             paths = imgFileName.split('_')
             patient_id = paths[0]
-            orientation.append(patient_id + '_' + paths[3])
+
+            img_class = df.loc[df['File Name'] == int(patient_id)]['Bi-Rads']
+            img_class = img_class.to_string(index = False)
+            #print(img_class)
+
+            orientation.append(patient_id + '_' + paths[3] + '_' + img_class)
             suffix = '_' + '_'.join(paths[1:])
             #print('Processing patient file: ' + patient_id + suffix)
 
@@ -125,8 +133,12 @@ if __name__ == "__main__":
             max_w = max(dims[2], max_w)
             max_h = max(dims[3], max_h)
 
+            if not os.path.exists('results/' + img_class):
+            # if the directory is not present then create it.
+                os.mkdir('results/' + img_class)
+            
             #processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
-            cv2.imwrite('results/' + patient_id + '_processed.png', processed.astype(np.uint8))
+            cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
             #cv2.imwrite('results/' + patient_id + '_mask.png', (mask*255).astype(np.uint8))
 
 
@@ -134,7 +146,8 @@ if __name__ == "__main__":
         lst_split = img.split('_')
         patient_id = lst_split[0]
         orient = lst_split[1]
-        processed_img = cv2.imread('results/' + patient_id + '_processed.png', cv2.IMREAD_UNCHANGED)
+        img_class = lst_split[2]
+        processed_img = cv2.imread('results/' + img_class + '/' + patient_id + '_processed.png', cv2.IMREAD_UNCHANGED)
         r, c = processed_img.shape
         padding_r = max_h - r
 
@@ -147,19 +160,8 @@ if __name__ == "__main__":
 
         processed_img = cv2.copyMakeBorder(processed_img, padding_r//2, padding_r//2, padding_w1, padding_w2, cv2.BORDER_CONSTANT, value = 0)
         processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 5, processed_img.shape[0] // 5))
-        cv2.imwrite('results/' + patient_id + '_processed.png', processed_img.astype(np.uint8))
+        cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed_img.astype(np.uint8))
         
-    # synthetized = cv2.cvtColor(synthetized, cv2.COLOR_BGR2RGB)
 
-    # cv2.namedWindow('Display', cv2.WINDOW_NORMAL)
-    # cv2.namedWindow('Output', cv2.WINDOW_NORMAL)
-    # cv2.namedWindow('Mask', cv2.WINDOW_NORMAL)
-    # cv2.imshow('Display', original.astype(np.uint8))
-    # cv2.imshow('Output', synthetized.astype(np.uint8))
-    # cv2.imshow('Mask', (mass_mask*255).astype(np.uint8))
     # cv2.waitKey(0)
-
-    # cv2.imwrite(patient_id + '_mask.jpeg', (mass_mask*255).astype(np.uint8))
-    # cv2.imwrite(patient_id + '_synthetized.jpeg', synthetized.astype(np.uint8))
-    
     cv2.destroyAllWindows()
