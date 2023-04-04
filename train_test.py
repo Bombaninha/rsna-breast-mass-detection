@@ -7,39 +7,13 @@ import torchvision.transforms as transforms
 from sklearn.model_selection import StratifiedShuffleSplit
 import splitfolders
 
+torch.backends.cudnn.benchmark = True
+torch.set_default_tensor_type('torch.cuda.HalfTensor')
+
 # Set device to GPU if available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
-# data_dir = '/results'
-# classes = os.listdir(data_dir)
-# image_paths = []
-# labels = []
-
-# # collect paths and labels for all images
-# for i, class_name in enumerate(classes):
-#     class_path = os.path.join(data_dir, class_name)
-#     for image_name in os.listdir(class_path):
-#         image_path = os.path.join(class_path, image_name)
-#         image_paths.append(image_path)
-#         labels.append(i)
-
-# # split data into train and test sets
-# sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-# train_indices, test_indices = next(sss.split(image_paths, labels))
-# train_paths = [image_paths[i] for i in train_indices]
-# train_labels = [labels[i] for i in train_indices]
-# test_paths = [image_paths[i] for i in test_indices]
-# test_labels = [labels[i] for i in test_indices]
-
-# # Load the dataset
-# train_dataset = datasets.ImageFolder(root='data/train', transform=transforms.ToTensor())
-# test_dataset = datasets.ImageFolder(root='data/test', transform=transforms.ToTensor())
-
-# # Define the dataloaders
-# batch_size = 64
-# train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-# test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # Define the transformation to apply to the images
 def get_transform(image_size, num_channels):
@@ -64,8 +38,8 @@ def get_dataset(image_size, num_channels):
 # Define the data loader
 def get_data_loader(image_size, num_channels, batch_size):
     train_dataset, test_dataset = get_dataset(image_size, num_channels)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, pin_memory=True, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, pin_memory=True, shuffle=False)
     return train_loader, test_loader, train_dataset, test_dataset
 
 # Define the model architecture
@@ -105,8 +79,6 @@ def get_model(image_size, num_channels):
     return model, criterion, optimizer
 
 
-# print('device' + str(device))
-# exit()
 # Initialize the model and move it to the GPU if available
 model = CNN((544, 814), 1).to(device)
 
@@ -114,7 +86,7 @@ model = CNN((544, 814), 1).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 16)
+train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 4)
 
 # Train the model
 num_epochs = 10
@@ -155,3 +127,6 @@ for epoch in range(num_epochs):
     # Print the training and test loss and accuracy for each epoch
     print('Epoch [{}/{}], Train Loss: {:.4f}, Train Acc: {:.4f}, Test Loss: {:.4f}, Test Acc: {:.4f}'
           .format(epoch+1, num_epochs, train_loss, train_accuracy, test_loss, test_accuracy))
+    
+    torch.cuda.empty_cache()
+

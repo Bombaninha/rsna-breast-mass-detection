@@ -115,7 +115,7 @@ if __name__ == "__main__":
     max_h_img_id = 0
 
     df = pd.read_csv('data/INbreast.csv', delimiter=';')
-    print(df.head())
+    #print(df.head())
 
     # Scan the file directory for all image files and get the patient_id and suffix_path from them:
     imgFileName_list = os.scandir(DCM_PATH)
@@ -148,16 +148,25 @@ if __name__ == "__main__":
             
             #processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
             cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
-            #cv2.imwrite('results/' + patient_id + '_mask.png', (mask*255).astype(np.uint8))
+            
+            # print images used in our presentation:
+            # if patient_id == '20587080':
+            #     cv2.imwrite('data/' + patient_id + '_original.png', original.astype(np.uint8))
+            # if patient_id == '22614097':
+            #     cv2.imwrite('data/' + patient_id + '_original.png', original.astype(np.uint8))
+            # if patient_id == '53586869':
+            #     cv2.imwrite('data/' + patient_id + '_original.png', original.astype(np.uint8))
 
-    print(max_w_img_id)
-    print(max_h_img_id)
+    # get ids of the images used in our presentation
+    # print(max_w_img_id)
+    # print(max_h_img_id)
 
     for img in orientation:
         lst_split = img.split('_')
         patient_id = lst_split[0]
         orient = lst_split[1]
         img_class = lst_split[2]
+        
         processed_img = cv2.imread('results/' + img_class + '/' + patient_id + '_processed.png', cv2.IMREAD_UNCHANGED)
         r, c = processed_img.shape
         padding_r = max_h - r
@@ -173,6 +182,5 @@ if __name__ == "__main__":
         processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 5, processed_img.shape[0] // 5))
         cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed_img.astype(np.uint8))
         
-    
     # cv2.waitKey(0)
     cv2.destroyAllWindows()
