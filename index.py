@@ -111,6 +111,8 @@ if __name__ == "__main__":
 
     max_w = 0
     max_h = 0
+    max_w_img_id = 0
+    max_h_img_id = 0
 
     df = pd.read_csv('data/INbreast.csv', delimiter=';')
     print(df.head())
@@ -135,6 +137,10 @@ if __name__ == "__main__":
             original, processed, mask, dims = process_images(patient_id, suffix, orientation)
             max_w = max(dims[2], max_w)
             max_h = max(dims[3], max_h)
+            if dims[2] == max_w : 
+                max_w_img_id = patient_id
+            if dims[3] == max_h : 
+                max_h_img_id = patient_id
 
             if not os.path.exists('results/' + img_class):
             # if the directory is not present then create it.
@@ -144,6 +150,8 @@ if __name__ == "__main__":
             cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
             #cv2.imwrite('results/' + patient_id + '_mask.png', (mask*255).astype(np.uint8))
 
+    print(max_w_img_id)
+    print(max_h_img_id)
 
     for img in orientation:
         lst_split = img.split('_')
@@ -160,11 +168,11 @@ if __name__ == "__main__":
         else:
             padding_w1 = 0
             padding_w2 = max_w - c
-
+        
         processed_img = cv2.copyMakeBorder(processed_img, padding_r//2, padding_r//2, padding_w1, padding_w2, cv2.BORDER_CONSTANT, value = 0)
         processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 5, processed_img.shape[0] // 5))
         cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed_img.astype(np.uint8))
         
-
+    
     # cv2.waitKey(0)
     cv2.destroyAllWindows()
