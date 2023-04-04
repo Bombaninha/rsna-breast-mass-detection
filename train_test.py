@@ -44,8 +44,9 @@ def get_dataset(image_size, num_channels):
 # Define the data loader
 def get_data_loader(image_size, num_channels, batch_size):
     train_dataset, test_dataset = get_dataset(image_size, num_channels)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, generator=torch.Generator(device=device), shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, generator=torch.Generator(device=device), shuffle=False)
+    #kwargs = {'num_workers': 1, 'pin_memory': True} if in_device == 'cuda' else {}
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, generator=torch.Generator(device=device))
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, generator=torch.Generator(device=device))
     return train_loader, test_loader, train_dataset, test_dataset
 
 # Define the model architecture
@@ -108,9 +109,14 @@ for epoch in range(num_epochs):
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
+
+        loss = loss.to('cpu')
         train_loss += loss.item() * images.size(0)
         _, predicted = torch.max(outputs.data, 1)
+        predicted = predicted.to('cpu')
+        labels = labels.to('cpu')
         train_correct += (predicted == labels).sum().item()
+
     train_loss = train_loss / len(train_dataset)
     train_accuracy = train_correct / len(train_dataset)
     
@@ -127,12 +133,18 @@ for epoch in range(num_epochs):
             images = images.to(device)
             labels = labels.to(device)
             outputs = model(images)
-            # print('output: ' + str(outputs))
+
             loss = criterion(outputs, labels)
+            loss = loss.to('cpu')
             test_loss += loss.item() * images.size(0)
+
             _, predicted = torch.max(outputs.data, 1)
+            predicted = predicted.to('cpu')
+            labels = labels.to('cpu')
             test_correct += (predicted == labels).sum().item()
+
             predicted_lst.append(predicted)
+
     test_loss = test_loss / len(test_dataset)
     test_accuracy = test_correct / len(test_dataset)
     
