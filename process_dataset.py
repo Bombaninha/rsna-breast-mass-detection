@@ -8,41 +8,9 @@ import os
 #DCM_PATH = 'INbreast Release 1.0/AllDICOMs/'
 DCM_PATH = 'data/AllDICOMs/'
 
-<<<<<<< HEAD:process_dataset.py
-def load_inbreast_mask(mask_path, imshape=(4084, 3328)):
-    def load_point(point_string):
-        x, y = tuple([float(num) for num in point_string.strip('()').split(',')])
-        return y, x
-    i =  0
-    mask = np.zeros(imshape)
-    with open(mask_path, 'rb') as mask_file:
-        plist_dict = plistlib.load(mask_file, fmt=plistlib.FMT_XML)['Images'][0]
-        numRois = plist_dict['NumberOfROIs']
-        rois = plist_dict['ROIs']
-        assert len(rois) == numRois
-        for roi in rois:
-            numPoints = roi['NumberOfPoints']
-            if roi['Name'] == 'Mass':
-                i+=1
-                points = roi['Point_px']
-                assert numPoints == len(points)
-                points = [load_point(point) for point in points]
-                if len(points) <= 2:
-                    for point in points:
-                        mask[int(point[0]), int(point[1])] = i
-                else:
-                    x, y = zip(*points)
-                    x, y = np.array(x), np.array(y)
-                    poly_x, poly_y = polygon(x, y, shape=imshape)
-                    mask[poly_x, poly_y] = i
-    return mask
-
 def crop(img):
 
     # Otsu's thresholding after Gaussian filtering
-=======
-def crop(img):
->>>>>>> ee44b619896371f32a083d13e088cf15989f268e:index.py
     blur = cv2.GaussianBlur(img, (5,5), 0)
     _, breast_mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     
@@ -53,16 +21,10 @@ def crop(img):
     return img[y:y+h, x:x+w], breast_mask[y:y+h, x:x+w], (x, y, w, h)
 
 def truncation_normalization(img, mask):
-<<<<<<< HEAD:process_dataset.py
 
     Pmin = np.percentile(img[mask!=0], 5)
     Pmax = np.percentile(img[mask!=0], 99)
     truncated = np.clip(img,Pmin, Pmax) 
-=======
-    Pmin = np.percentile(img[mask != 0], 5)
-    Pmax = np.percentile(img[mask != 0], 99)
-    truncated = np.clip(img, Pmin, Pmax) 
->>>>>>> ee44b619896371f32a083d13e088cf15989f268e:index.py
     normalized = (truncated - Pmin) / (Pmax - Pmin)
     normalized[mask == 0] = 0
     return normalized

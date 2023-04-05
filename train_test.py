@@ -5,7 +5,6 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import splitfolders
 
-<<<<<<< HEAD
 in_device = input('Choose a device to run on (cuda or cpu): ')
 
 if(in_device == 'cuda'):
@@ -21,8 +20,6 @@ splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2))
 #class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
 class_names = ['0', '1', '2']
 
-=======
->>>>>>> ee44b619896371f32a083d13e088cf15989f268e
 # Define the transformation to apply to the images
 def get_transform(image_size, num_channels):
     transform = transforms.Compose([
@@ -90,49 +87,19 @@ class CNN(nn.Module):
         x = self.fc2(x)
         return x
 
-# # Define the loss function and optimizer
-# def get_model(image_size, num_channels):
-#     model = CNN(image_size, num_channels).to(device)
-#     criterion = nn.CrossEntropyLoss()
-#     optimizer = optim.Adam(model.parameters())
-#     return model, criterion, optimizer
-
 if __name__ == "__main__":
     in_device = input('Choose a device to run on (cuda or cpu): ')
 
-<<<<<<< HEAD
-# Initialize the model and move it to the GPU if available
-model = CNN((454, 678), 1).to(device)
-#model = CNN((544, 814), 1).to(device)
-
-# Define the loss function and optimizer
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # 0.001
-
-train_loader, test_loader, train_dataset, test_dataset = get_data_loader((454, 678), 1, 8)
-#train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
-=======
-    if(in_device == 'cuda'):
-        # Set device to GPU if available
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        torch.backends.cudnn.benchmark = True
-        torch.set_default_tensor_type('torch.cuda.HalfTensor')
-    else:
-        device = torch.device('cpu')
-
-    splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
-
-    class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
->>>>>>> ee44b619896371f32a083d13e088cf15989f268e
-
     # Initialize the model and move it to the GPU if available
-    model = CNN((544, 814), 1).to(device)
+    model = CNN((454, 678), 1).to(device)
+    #model = CNN((544, 814), 1).to(device)
 
     # Define the loss function and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # 0.001
 
-    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
+    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((454, 678), 1, 8)
+    #train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
 
     # Train the model
     num_epochs = 10
