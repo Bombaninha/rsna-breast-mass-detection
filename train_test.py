@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-from sklearn.model_selection import StratifiedShuffleSplit
 import splitfolders
 
 in_device = input('Choose a device to run on (cuda or cpu): ')
@@ -12,14 +11,15 @@ in_device = input('Choose a device to run on (cuda or cpu): ')
 if(in_device == 'cuda'):
     # Set device to GPU if available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    torch.backends.cudnn.benchmark = True
-    torch.set_default_tensor_type('torch.cuda.HalfTensor')
+    # torch.backends.cudnn.benchmark = True
+    # torch.set_default_tensor_type('torch.cuda.HalfTensor')
 else:
     device = torch.device('cpu')
 
 splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
 
-class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
+#class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
+class_names = ['0', '1', '2']
 
 # Define the transformation to apply to the images
 def get_transform(image_size, num_channels):
@@ -57,11 +57,15 @@ class CNN(nn.Module):
         self.conv1 = nn.Conv2d(num_channels, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        #self.conv4 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        #self.conv5 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
 
         self.pool = nn.MaxPool2d(2)
 
         self.fc1 = nn.Linear(128 * (image_size[0] // 8) * (image_size[1] // 8), 512)
-        self.fc2 = nn.Linear(512, 8)
+        self.fc2 = nn.Linear(512, 3)
+        #self.fc3 = nn.Linear(512, 3)
+        #self.fc2 = nn.Linear(512, 8)
 
         self.relu = nn.ReLU()
 
@@ -72,9 +76,15 @@ class CNN(nn.Module):
         x = self.pool(x)
         x = self.relu(self.conv3(x))
         x = self.pool(x)
+        # x = self.relu(self.conv4(x))
+        # x = self.pool(x)
+        # x = self.relu(self.conv5(x))
+        # x = self.pool(x)
         #x = x.view(-1, 128 * (x.shape[2] // 8) * (x.shape[3] // 8))
         x = x.view(x.size(0), -1)
         x = self.relu(self.fc1(x))
+        #x = self.relu(self.fc2(x))
+        #x = self.fc3(x)
         x = self.fc2(x)
         return x
 
@@ -87,13 +97,15 @@ class CNN(nn.Module):
 
 
 # Initialize the model and move it to the GPU if available
-model = CNN((544, 814), 1).to(device)
+model = CNN((454, 678), 1).to(device)
+#model = CNN((544, 814), 1).to(device)
 
 # Define the loss function and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # 0.001
 
-train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
+train_loader, test_loader, train_dataset, test_dataset = get_data_loader((454, 678), 1, 8)
+#train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
 
 # Train the model
 num_epochs = 10

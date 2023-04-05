@@ -13,14 +13,6 @@ from skimage.draw import polygon
 DCM_PATH = 'data/AllDICOMs/'
 
 def load_inbreast_mask(mask_path, imshape=(4084, 3328)):
-    """
-    This function loads a osirix xml region as a binary numpy array for INBREAST
-    dataset
-    @mask_path : Path to the xml file
-    @imshape : The shape of the image as an array e.g. [4084, 3328]
-    return: numpy array where each mass has a different number id.
-    """
-
     def load_point(point_string):
         x, y = tuple([float(num) for num in point_string.strip('()').split(',')])
         return y, x
@@ -49,14 +41,7 @@ def load_inbreast_mask(mask_path, imshape=(4084, 3328)):
     return mask
 
 def crop(img):
-    """
-    Crop breast ROI from image.
-    @img : numpy array image
-    @mask : numpy array mask of the lesions
-    return: numpy array of the ROI extracted for the image, 
-            numpy array of the ROI extracted for the breast mask,
-            numpy array of the ROI extracted for the masses mask
-    """
+
     # Otsu's thresholding after Gaussian filtering
     blur = cv2.GaussianBlur(img, (5,5), 0)
     _, breast_mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -68,9 +53,7 @@ def crop(img):
     return img[y:y+h, x:x+w], breast_mask[y:y+h, x:x+w], (x, y, w, h)
 
 def truncation_normalization(img, mask):
-    """
-    Pixel clipped and normalized in breast ROI
-    """
+
     Pmin = np.percentile(img[mask!=0], 5)
     Pmax = np.percentile(img[mask!=0], 99)
     truncated = np.clip(img,Pmin, Pmax) 
@@ -79,30 +62,24 @@ def truncation_normalization(img, mask):
     return normalized
 
 def contrast_enhancement(img, clip):
-    #contrast enhancement
+
     clahe = cv2.createCLAHE(clipLimit=clip)
     cl = clahe.apply(np.array(img*255, dtype=np.uint8))
     return cl
 
 def process_images(patient_id, suffix_path, orientation='R'):
-    """
-    Create a 3-channel image composed of the truncated and normalized image,
-    the contrast enhanced image with clip limit 1, 
-    and the contrast enhanced image with clip limit 2 
-    @patient_id : patient id to recover image and mask in the dataset
-    return: numpy array of the breast region, numpy array of the synthetized images, numpy array of the masses mask
-    """
+    
     image_path = glob.glob(os.path.join(DCM_PATH, str(patient_id) + suffix_path))[0]
     ds = dicom.dcmread(image_path)
     pixel_array_numpy = ds.pixel_array
     breast, mask, dims = crop(pixel_array_numpy)
     normalized = truncation_normalization(breast, mask)
 
-    #cl1 = contrast_enhancement(normalized, 1.0)
-    #cl2 = contrast_enhancement(normalized, 2.0)
-    
-    #synthetized = cv2.merge((np.array(normalized*255, dtype=np.uint8),cl1,cl2))
-    return breast, np.array(normalized*255, dtype=np.uint8), mask, dims
+    cl1 = contrast_enhancement(normalized, 1.0)
+    cl2 = contrast_enhancement(normalized, 2.0)
+    #processed = np.array(normalized*255, dtype=np.uint8)
+    processed = cv2.merge((np.array(normalized*255, dtype=np.uint8),cl1,cl2))
+    return breast, processed, mask, dims
 
 if __name__ == "__main__":
 
@@ -128,6 +105,13 @@ if __name__ == "__main__":
 
             img_class = df.loc[df['File Name'] == int(patient_id)]['Bi-Rads']
             img_class = img_class.to_string(index = False)
+            
+            if img_class == '1':
+                img_class = '0'
+            elif img_class == '2':
+                img_class = '1'
+            else:
+                img_class = '2'
             #print(img_class)
 
             orientation.append(patient_id + '_' + paths[3] + '_' + img_class)
@@ -146,7 +130,7 @@ if __name__ == "__main__":
             # if the directory is not present then create it.
                 os.mkdir('results/' + img_class)
             
-            #processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
+            processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
             cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
             
             # print images used in our presentation:
@@ -168,7 +152,8 @@ if __name__ == "__main__":
         img_class = lst_split[2]
         
         processed_img = cv2.imread('results/' + img_class + '/' + patient_id + '_processed.png', cv2.IMREAD_UNCHANGED)
-        r, c = processed_img.shape
+        r, c, ch = processed_img.shape
+        #r, c = processed_img.shape
         padding_r = max_h - r
 
         if orient == 'R':
@@ -179,7 +164,8 @@ if __name__ == "__main__":
             padding_w2 = max_w - c
         
         processed_img = cv2.copyMakeBorder(processed_img, padding_r//2, padding_r//2, padding_w1, padding_w2, cv2.BORDER_CONSTANT, value = 0)
-        processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 5, processed_img.shape[0] // 5))
+        processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 6, processed_img.shape[0] // 6))
+        #processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 5, processed_img.shape[0] // 5))
         cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed_img.astype(np.uint8))
         
     # cv2.waitKey(0)
