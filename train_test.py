@@ -26,11 +26,11 @@ def get_dataset(image_size, num_channels):
     return train_dataset, test_dataset
 
 # Define the data loader
-def get_data_loader(image_size, num_channels, batch_size):
+def get_data_loader(image_size, num_channels, batch_size, device):
     train_dataset, test_dataset = get_dataset(image_size, num_channels)
-    #kwargs = {'num_workers': 1, 'pin_memory': True} if in_device == 'cuda' else {}
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, generator=torch.Generator(device=device))
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, generator=torch.Generator(device=device))
+    kwargs = {'pin_memory': True} if device == 'cuda' else {}
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **kwargs)
     return train_loader, test_loader, train_dataset, test_dataset
 
 # Define the model architecture
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         # torch.set_default_tensor_type('torch.cuda.HalfTensor')
     else:
         device = torch.device('cpu')
-
+    
     splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
 
     class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # 0.001
 
-    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((454, 678), 3, 16)
+    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((454, 678), 3, 8, device)
     #train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
 
     # Train the model
@@ -114,11 +114,8 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            loss = loss.to('cpu')
             train_loss += loss.item() * images.size(0)
             _, predicted = torch.max(outputs.data, 1)
-            predicted = predicted.to('cpu')
-            labels = labels.to('cpu')
             train_correct += (predicted == labels).sum().item()
 
         train_loss = train_loss / len(train_dataset)
@@ -139,12 +136,9 @@ if __name__ == "__main__":
                 outputs = model(images)
 
                 loss = criterion(outputs, labels)
-                loss = loss.to('cpu')
                 test_loss += loss.item() * images.size(0)
 
                 _, predicted = torch.max(outputs.data, 1)
-                predicted = predicted.to('cpu')
-                labels = labels.to('cpu')
                 test_correct += (predicted == labels).sum().item()
 
                 predicted_lst.append(predicted)
