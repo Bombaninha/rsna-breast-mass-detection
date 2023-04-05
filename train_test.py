@@ -7,39 +7,19 @@ import torchvision.transforms as transforms
 from sklearn.model_selection import StratifiedShuffleSplit
 import splitfolders
 
-# Set device to GPU if available
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+in_device = input('Choose a device to run on (cuda or cpu): ')
+
+if(in_device == 'cuda'):
+    # Set device to GPU if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    torch.backends.cudnn.benchmark = True
+    torch.set_default_tensor_type('torch.cuda.HalfTensor')
+else:
+    device = torch.device('cpu')
 
 splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
-# data_dir = '/results'
-# classes = os.listdir(data_dir)
-# image_paths = []
-# labels = []
 
-# # collect paths and labels for all images
-# for i, class_name in enumerate(classes):
-#     class_path = os.path.join(data_dir, class_name)
-#     for image_name in os.listdir(class_path):
-#         image_path = os.path.join(class_path, image_name)
-#         image_paths.append(image_path)
-#         labels.append(i)
-
-# # split data into train and test sets
-# sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-# train_indices, test_indices = next(sss.split(image_paths, labels))
-# train_paths = [image_paths[i] for i in train_indices]
-# train_labels = [labels[i] for i in train_indices]
-# test_paths = [image_paths[i] for i in test_indices]
-# test_labels = [labels[i] for i in test_indices]
-
-# # Load the dataset
-# train_dataset = datasets.ImageFolder(root='data/train', transform=transforms.ToTensor())
-# test_dataset = datasets.ImageFolder(root='data/test', transform=transforms.ToTensor())
-
-# # Define the dataloaders
-# batch_size = 64
-# train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-# test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
 
 # Define the transformation to apply to the images
 def get_transform(image_size, num_channels):
@@ -64,8 +44,9 @@ def get_dataset(image_size, num_channels):
 # Define the data loader
 def get_data_loader(image_size, num_channels, batch_size):
     train_dataset, test_dataset = get_dataset(image_size, num_channels)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    #kwargs = {'num_workers': 1, 'pin_memory': True} if in_device == 'cuda' else {}
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, generator=torch.Generator(device=device))
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, generator=torch.Generator(device=device))
     return train_loader, test_loader, train_dataset, test_dataset
 
 # Define the model architecture
@@ -97,16 +78,14 @@ class CNN(nn.Module):
         x = self.fc2(x)
         return x
 
-# Define the loss function and optimizer
-def get_model(image_size, num_channels):
-    model = CNN(image_size, num_channels).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters())
-    return model, criterion, optimizer
+# # Define the loss function and optimizer
+# def get_model(image_size, num_channels):
+#     model = CNN(image_size, num_channels).to(device)
+#     criterion = nn.CrossEntropyLoss()
+#     optimizer = optim.Adam(model.parameters())
+#     return model, criterion, optimizer
 
 
-# print('device' + str(device))
-# exit()
 # Initialize the model and move it to the GPU if available
 model = CNN((544, 814), 1).to(device)
 
@@ -114,7 +93,7 @@ model = CNN((544, 814), 1).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 16)
+train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
 
 # Train the model
 num_epochs = 10
@@ -130,28 +109,57 @@ for epoch in range(num_epochs):
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
+
+        loss = loss.to('cpu')
         train_loss += loss.item() * images.size(0)
         _, predicted = torch.max(outputs.data, 1)
+        predicted = predicted.to('cpu')
+        labels = labels.to('cpu')
         train_correct += (predicted == labels).sum().item()
+
     train_loss = train_loss / len(train_dataset)
     train_accuracy = train_correct / len(train_dataset)
     
+    predicted_lst = []
+    labels_lst = []
+
     # Evaluate the model on the test set
     test_loss = 0.0
     test_correct = 0
     model.eval()
     with torch.no_grad():
         for images, labels in test_loader:
+            labels_lst.append(labels)
             images = images.to(device)
             labels = labels.to(device)
             outputs = model(images)
+
             loss = criterion(outputs, labels)
+            loss = loss.to('cpu')
             test_loss += loss.item() * images.size(0)
+
             _, predicted = torch.max(outputs.data, 1)
+            predicted = predicted.to('cpu')
+            labels = labels.to('cpu')
             test_correct += (predicted == labels).sum().item()
+
+            predicted_lst.append(predicted)
+
     test_loss = test_loss / len(test_dataset)
     test_accuracy = test_correct / len(test_dataset)
     
     # Print the training and test loss and accuracy for each epoch
     print('Epoch [{}/{}], Train Loss: {:.4f}, Train Acc: {:.4f}, Test Loss: {:.4f}, Test Acc: {:.4f}'
           .format(epoch+1, num_epochs, train_loss, train_accuracy, test_loss, test_accuracy))
+    
+    torch.cuda.empty_cache()
+
+    if epoch == num_epochs-1: # record results from the last epoch tests
+        fp = open('data/cnn_predicted' + str(epoch+1) + '.txt', 'w') 
+        for i in range(len(predicted_lst)):
+            pred_labels, class_labels = zip(*[(class_names[pl], class_names[cl]) for pl, cl in zip(predicted_lst[i].tolist(), labels_lst[i].tolist())])
+            #class_labels = [class_names[j] for j in labels_lst[i].tolist()]
+            
+            for k in range(len(class_labels)):
+                fp.write('Epoch [{}/{}] - Batch {}: predicted {} was class {}\n'.format( 
+                        epoch+1, num_epochs, i, pred_labels[k], class_labels[k]))
