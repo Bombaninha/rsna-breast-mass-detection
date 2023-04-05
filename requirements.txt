@@ -2,6 +2,8 @@ matplotlib
 numpy
 pydicom
 opencv-python
-sckikit-image
+scikit-image
 torch
 torchvision
+scikit-learn
+split-folders
