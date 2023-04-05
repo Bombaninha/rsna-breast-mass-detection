@@ -1,17 +1,14 @@
 import pydicom as dicom
-import matplotlib.pylab as plt
 import cv2   
 import numpy as np
 import pandas as pd
 import glob
 import os
-import plistlib
-from skimage import exposure
-from skimage.draw import polygon
 
 #DCM_PATH = 'INbreast Release 1.0/AllDICOMs/'
 DCM_PATH = 'data/AllDICOMs/'
 
+<<<<<<< HEAD:process_dataset.py
 def load_inbreast_mask(mask_path, imshape=(4084, 3328)):
     def load_point(point_string):
         x, y = tuple([float(num) for num in point_string.strip('()').split(',')])
@@ -43,6 +40,9 @@ def load_inbreast_mask(mask_path, imshape=(4084, 3328)):
 def crop(img):
 
     # Otsu's thresholding after Gaussian filtering
+=======
+def crop(img):
+>>>>>>> ee44b619896371f32a083d13e088cf15989f268e:index.py
     blur = cv2.GaussianBlur(img, (5,5), 0)
     _, breast_mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     
@@ -53,18 +53,23 @@ def crop(img):
     return img[y:y+h, x:x+w], breast_mask[y:y+h, x:x+w], (x, y, w, h)
 
 def truncation_normalization(img, mask):
+<<<<<<< HEAD:process_dataset.py
 
     Pmin = np.percentile(img[mask!=0], 5)
     Pmax = np.percentile(img[mask!=0], 99)
     truncated = np.clip(img,Pmin, Pmax) 
+=======
+    Pmin = np.percentile(img[mask != 0], 5)
+    Pmax = np.percentile(img[mask != 0], 99)
+    truncated = np.clip(img, Pmin, Pmax) 
+>>>>>>> ee44b619896371f32a083d13e088cf15989f268e:index.py
     normalized = (truncated - Pmin) / (Pmax - Pmin)
-    normalized[mask==0]=0
+    normalized[mask == 0] = 0
     return normalized
 
 def contrast_enhancement(img, clip):
-
     clahe = cv2.createCLAHE(clipLimit=clip)
-    cl = clahe.apply(np.array(img*255, dtype=np.uint8))
+    cl = clahe.apply(np.array(img * 255, dtype=np.uint8))
     return cl
 
 def process_images(patient_id, suffix_path, orientation='R'):
@@ -86,13 +91,9 @@ if __name__ == "__main__":
     if not os.path.exists('results'):
         os.mkdir('results')
 
-    max_w = 0
-    max_h = 0
-    max_w_img_id = 0
-    max_h_img_id = 0
+    max_w, max_h, max_w_img_id, max_h_img_id = 0, 0, 0, 0
 
     df = pd.read_csv('data/INbreast.csv', delimiter=';')
-    #print(df.head())
 
     # Scan the file directory for all image files and get the patient_id and suffix_path from them:
     imgFileName_list = os.scandir(DCM_PATH)
@@ -116,7 +117,6 @@ if __name__ == "__main__":
 
             orientation.append(patient_id + '_' + paths[3] + '_' + img_class)
             suffix = '_' + '_'.join(paths[1:])
-            #print('Processing patient file: ' + patient_id + suffix)
 
             original, processed, mask, dims = process_images(patient_id, suffix, orientation)
             max_w = max(dims[2], max_w)
@@ -167,6 +167,5 @@ if __name__ == "__main__":
         processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 6, processed_img.shape[0] // 6))
         #processed_img = cv2.resize(processed_img, (processed_img.shape[1] // 5, processed_img.shape[0] // 5))
         cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed_img.astype(np.uint8))
-        
-    # cv2.waitKey(0)
+
     cv2.destroyAllWindows()
