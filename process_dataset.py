@@ -46,7 +46,7 @@ def process_images(patient_id, suffix_path, orientation='R'):
     cl2 = contrast_enhancement(normalized, 2.0)
     #processed = np.array(normalized*255, dtype=np.uint8)
     processed = cv2.merge((np.array(normalized*255, dtype=np.uint8),cl1,cl2))
-    return breast, processed, mask, dims
+    return breast, processed, mask, dims, pixel_array_numpy
 
 if __name__ == "__main__":
 
@@ -69,18 +69,18 @@ if __name__ == "__main__":
             img_class = df.loc[df['File Name'] == int(patient_id)]['Bi-Rads']
             img_class = img_class.to_string(index = False)
             
-            if img_class == '1':
-                img_class = '0'
-            elif img_class == '2':
-                img_class = '1'
-            else:
-                img_class = '2'
+            # if img_class == '1':
+            #     img_class = '0'
+            # elif img_class == '2':
+            #     img_class = '1'
+            # else:
+            #     img_class = '2'
             #print(img_class)
 
             orientation.append(patient_id + '_' + paths[3] + '_' + img_class)
             suffix = '_' + '_'.join(paths[1:])
 
-            original, processed, mask, dims = process_images(patient_id, suffix, orientation)
+            original, processed, mask, dims, img = process_images(patient_id, suffix, orientation)
             max_w = max(dims[2], max_w)
             max_h = max(dims[3], max_h)
             if dims[2] == max_w : 
@@ -96,8 +96,9 @@ if __name__ == "__main__":
             cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
             
             # print images used in our presentation:
-            # if patient_id == '20587080':
-            #     cv2.imwrite('data/' + patient_id + '_original.png', original.astype(np.uint8))
+            if patient_id == '20587080':
+                cv2.imwrite('data/' + patient_id + '_original.png', img.astype(np.uint8))
+                cv2.imwrite('data/' + patient_id + '_original_cropped.png', original.astype(np.uint8))
             # if patient_id == '22614097':
             #     cv2.imwrite('data/' + patient_id + '_original.png', original.astype(np.uint8))
             # if patient_id == '53586869':
