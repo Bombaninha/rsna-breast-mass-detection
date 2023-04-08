@@ -72,15 +72,12 @@ class CNN(nn.Module):
         return x
 
 if __name__ == "__main__":
-    in_device = input('Choose a device to run on (cuda or cpu): ')
+    #in_device = input('Choose a device to run on (cuda or cpu): ')
 
-    if(in_device == 'cuda'):
-        # Set device to GPU if available
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        #torch.backends.cudnn.benchmark = True
-        #torch.set_default_tensor_type('torch.cuda.HalfTensor')
-    else:
-        device = torch.device('cpu')
+    # Set device to GPU if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # if(device == torch.device('cuda')):
+    #     torch.set_default_tensor_type('torch.cuda.HalfTensor')
     
     splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
 
@@ -88,14 +85,14 @@ if __name__ == "__main__":
     #class_names = ['0', '1', '2']
     
     # Initialize the model and move it to the GPU if available
-    model = CNN((454, 678), 3).to(device)
+    model = CNN((512, 512), 3).to(device)
     #model = CNN((544, 814), 1).to(device)
 
     # Define the loss function and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # 0.001
 
-    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((454, 678), 3, 8, device)
+    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((512, 512), 3, 8, device)
     #train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
 
     # Train the model
