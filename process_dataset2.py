@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import glob
 import os
+import splitfolders
 
 #DCM_PATH = 'INbreast Release 1.0/AllDICOMs/'
 DCM_PATH = 'data/AllDICOMs/'
@@ -48,6 +49,35 @@ def process_images(patient_id, suffix_path, orientation='R'):
     processed = cv2.merge((np.array(normalized*255, dtype=np.uint8),cl1,cl2))
     return breast, processed, mask, dims, pixel_array_numpy
 
+def augment_dataset(path):
+    classes = os.listdir(path)
+    for img_class in classes:
+        class_path = path + '/' + img_class
+        for img in os.listdir(class_path):
+            img_info = img.split('_')
+            patient_id = img_info[0]
+
+            processed = cv2.imread(class_path + '/' + img, cv2.IMREAD_UNCHANGED)
+
+            #cv2.imwrite('output/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
+            if img_class == '0':
+            #if img_class == '1' or img_class == '5':
+                flippedH = cv2.flip(processed, 1)
+                flippedV = cv2.flip(processed, 0)
+                    
+                cv2.imwrite(class_path + '/' + patient_id + '_processedH.png', flippedH.astype(np.uint8))
+                cv2.imwrite(class_path + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
+                
+            elif img_class == '2':
+                flippedH = cv2.flip(processed, 1)
+                flippedV = cv2.flip(processed, 0)
+                #flippedD = cv2.flip(processed, -1)
+                
+                cv2.imwrite(class_path + '/' + patient_id + '_processedH.png', flippedH.astype(np.uint8))
+                cv2.imwrite(class_path + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
+                #cv2.imwrite(class_path + '/' + patient_id + '_processedD.png', flippedD.astype(np.uint8))
+
+
 if __name__ == "__main__":
 
     if not os.path.exists('results'):
@@ -59,7 +89,7 @@ if __name__ == "__main__":
 
     # Scan the file directory for all image files and get the patient_id and suffix_path from them:
     imgFileName_list = os.scandir(DCM_PATH)
-    orientation = []
+    imgInfo = []
     for imgFile in imgFileName_list:
         if(imgFile.path.find('.dcm') != -1):
             imgFileName = imgFile.path.split(DCM_PATH)[1]
@@ -69,18 +99,18 @@ if __name__ == "__main__":
             img_class = df.loc[df['File Name'] == int(patient_id)]['Bi-Rads']
             img_class = img_class.to_string(index = False)
             
-            # if img_class == '1':
-            #     img_class = '0'
-            # elif img_class == '2':
-            #     img_class = '1'
-            # else:
-            #     img_class = '2'
-            #print(img_class)
+            if img_class == '1':
+                img_class = '0'
+            elif img_class == '2':
+                img_class = '1'
+            else:
+                img_class = '2'
+            # #print(img_class)
 
-            orientation.append(patient_id + '_' + paths[3] + '_' + img_class)
+            imgInfo.append(patient_id + '_' + paths[3] + '_' + img_class)
             suffix = '_' + '_'.join(paths[1:])
 
-            original, processed, mask, dims, img = process_images(patient_id, suffix, orientation)
+            original, processed, mask, dims, img = process_images(patient_id, suffix, imgInfo)
             max_w = max(dims[2], max_w)
             max_h = max(dims[3], max_h)
             if dims[2] == max_w : 
@@ -95,23 +125,47 @@ if __name__ == "__main__":
             processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
             processed = cv2.resize(processed, (512,512), interpolation=cv2.INTER_CUBIC)
             
-            cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
+            # if img_class == '2':
+            #     if not os.path.exists('results/1/'):
+            #     # if the directory is not present then create it.
+            #         os.mkdir('results/1/')
+            #     cv2.imwrite('results/1/' + patient_id + '_processed.png', processed.astype(np.uint8))
+            cv2.imwrite('results/' + img_class + '/' + patient_id + '_' + paths[3] +'_processed.png', processed.astype(np.uint8))
             
-            if img_class == '1' or img_class == '5':
-                flippedH = cv2.flip(processed, 1)
-                flippedV = cv2.flip(processed, 0)
+            # # if img_class == '0':
+            # if img_class == '1' or img_class == '5':
+            #     flippedH = cv2.flip(processed, 1)
+            #     flippedV = cv2.flip(processed, 0)
                 
-                cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedH.png', flippedH.astype(np.uint8))
-                cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
+            #     if img_class == '1':
+            #         img_class = '0'
+            #     else:
+            #         img_class = '2'
+
+            #     if not os.path.exists('results/' + img_class):
+            #     # if the directory is not present then create it.
+            #         os.mkdir('results/' + img_class)
+                    
+            #     cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
+            #     cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedH.png', flippedH.astype(np.uint8))
+            #     cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
                 
-            elif img_class != '2':
-                flippedH = cv2.flip(processed, 1)
-                flippedV = cv2.flip(processed, 0)
-                flippedD = cv2.flip(processed, -1)
+            # #if img_class == '0' or img_class == '2':
+            # elif img_class != '2':
+            #     flippedH = cv2.flip(processed, 1)
+            #     flippedV = cv2.flip(processed, 0)
+            #     flippedD = cv2.flip(processed, -1)
                 
-                cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedH.png', flippedH.astype(np.uint8))
-                cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
-                cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedD.png', flippedD.astype(np.uint8))
+            #     img_class = '2'
+
+            #     if not os.path.exists('results/' + img_class):
+            #     # if the directory is not present then create it.
+            #         os.mkdir('results/' + img_class)
+
+            #     cv2.imwrite('results/' + img_class + '/' + patient_id + '_processed.png', processed.astype(np.uint8))
+            #     cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedH.png', flippedH.astype(np.uint8))
+            #     cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
+            #     cv2.imwrite('results/' + img_class + '/' + patient_id + '_processedD.png', flippedD.astype(np.uint8))
 
             # print images used in our presentation:
             # if patient_id == '20587080':
@@ -126,4 +180,8 @@ if __name__ == "__main__":
     # print(max_w_img_id)
     # print(max_h_img_id)
 
+    # Divide data into trian, test and validation datasets in a stratified manner:
+    splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
+    augment_dataset('output/train')
+    
     cv2.destroyAllWindows()

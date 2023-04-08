@@ -4,6 +4,7 @@ import torch.optim as optim
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import splitfolders
+import os
 
 # Define the transformation to apply to the images
 def get_transform(image_size, num_channels):
@@ -22,6 +23,7 @@ def get_transform(image_size, num_channels):
 def get_dataset(image_size, num_channels):
     transform = get_transform(image_size, num_channels)
     train_dataset = datasets.ImageFolder(root='./output/train', transform=transform)
+    #val_dataset = datasets.ImageFolder(root='./output/val', transform=transform)
     test_dataset = datasets.ImageFolder(root='./output/test', transform=transform)
     return train_dataset, test_dataset
 
@@ -31,44 +33,93 @@ def get_data_loader(image_size, num_channels, batch_size, device):
     kwargs = {'pin_memory': True} if device == 'cuda' else {}
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **kwargs)
+    #val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, **kwargs)
     return train_loader, test_loader, train_dataset, test_dataset
 
 # Define the model architecture
 class CNN(nn.Module):
-    def __init__(self, image_size, num_channels):
+    def __init__(self, image_size, num_channels, num_classes):
         super(CNN, self).__init__()
 
-        self.conv1 = nn.Conv2d(num_channels, 32, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        #self.conv4 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
-        #self.conv5 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        # self.conv1 = nn.Conv2d(num_channels, 32, kernel_size=3, padding=1)
+        # self.conv2 = nn.Conv2d(32, 32, kernel_size=3, padding=1)
+        # self.conv3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        # # self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        # # self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
 
-        self.pool = nn.MaxPool2d(2)
+        # self.pool = nn.MaxPool2d(kernel_size = (2,2), stride = (2,2))
+        # #self.pool = nn.MaxPool2d(2)
 
-        self.fc1 = nn.Linear(128 * (image_size[0] // 8) * (image_size[1] // 8), 512)
-        self.fc2 = nn.Linear(512, 8)
-        #self.fc2 = nn.Linear(512, 3)
+        # self.fc1 = nn.Linear(64 * (image_size[0] // 8) * (image_size[1] // 8), 512)
+        # self.fc2 = nn.Linear(512, num_classes)
 
-        self.relu = nn.ReLU()
+        # self.relu = nn.ReLU()
+        # self.dropout = nn.Dropout(p=0.2)
+
+        # Camadas convolucionais
+        self.conv1 = nn.Conv2d(in_channels=num_channels, out_channels=32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+        
+        # Camadas totalmente conectadas
+        self.fc1 = nn.Linear(in_features=128 * 8 * 8, out_features=512)
+        self.dropout1 = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(in_features=512, out_features=num_classes)
 
     def forward(self, x):
-        x = self.relu(self.conv1(x))
-        x = self.pool(x)
-        x = self.relu(self.conv2(x))
-        x = self.pool(x)
-        x = self.relu(self.conv3(x))
-        x = self.pool(x)
-        # x = self.relu(self.conv4(x))
+        # x = self.relu(self.conv1(x))
         # x = self.pool(x)
-        # x = self.relu(self.conv5(x))
+        # x = self.relu(self.conv2(x))
         # x = self.pool(x)
-        #x = x.view(-1, 128 * (x.shape[2] // 8) * (x.shape[3] // 8))
-        x = x.view(x.size(0), -1)
-        x = self.relu(self.fc1(x))
-        #x = self.relu(self.fc2(x))
-        #x = self.fc3(x)
+        # x = self.relu(self.conv3(x))
+        # x = self.pool(x)
+        # # x = self.relu(self.conv4(x))
+        # # x = self.pool(x)
+        # # x = self.relu(self.conv5(x))
+        # # x = self.pool(x)
+        # #x = x.view(-1, 128 * (x.shape[2] // 8) * (x.shape[3] // 8))
+        # x = x.view(x.size(0), -1)
+        # x = self.relu(self.fc1(x))
+        # #x = self.relu(self.fc2(x))
+        # #x = self.fc3(x)
+        # x = self.fc2(x)
+
+        # x = self.relu(self.conv1(x))
+        # x = self.pool(x)
+        # x = self.relu(self.conv2(x))
+        # x = self.pool(x)
+        # x = self.relu(self.conv3(x))
+        # x = self.pool(x)
+        # # x = self.relu(self.conv4(x))
+        # # x = self.pool(x)
+        # x = x.view(x.size(0), -1)
+        # x = self.relu(self.fc1(x))
+        # x = self.fc2(x)
+        # x = self.dropout(x)
+
+        # Passa a imagem por camadas convolucionais com ativação ReLU e normalização batch
+        x = self.conv1(x)
+        x = nn.functional.relu(x)
+        x = self.bn1(x)
+        x = self.conv2(x)
+        x = nn.functional.relu(x)
+        x = self.bn2(x)
+        x = self.conv3(x)
+        x = nn.functional.relu(x)
+        x = self.bn3(x)
+        
+        # Achatamento para passar através das camadas totalmente conectadas
+        x = x.view(-1, 128*8*8)
+        
+        # Passa através das camadas totalmente conectadas com ativação ReLU e dropout
+        x = self.fc1(x)
+        x = nn.functional.relu(x)
+        x = self.dropout1(x)
         x = self.fc2(x)
+
         return x
 
 if __name__ == "__main__":
@@ -79,22 +130,24 @@ if __name__ == "__main__":
     # if(device == torch.device('cuda')):
     #     torch.set_default_tensor_type('torch.cuda.HalfTensor')
     
-    splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
+    #splitfolders.ratio('results', output='output', seed=1337, ratio=(0.8, 0, 0.2)) 
 
-    class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
+    #class_names = ['1', '2', '3', '4a', '4b', '4c', '5', '6']
     #class_names = ['0', '1', '2']
+    class_names = os.listdir('output/train') # get the class names automatically using the folder names
     
+    torch.cuda.empty_cache()
     # Initialize the model and move it to the GPU if available
-    model = CNN((512, 512), 3).to(device)
+    model = CNN((512, 512), 1, 3).to(device)
     #model = CNN((544, 814), 1).to(device)
 
     # Define the loss function and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # 0.001
 
-    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((512, 512), 3, 8, device)
+    train_loader, test_loader, train_dataset, test_dataset = get_data_loader((512, 512), 1, 8, device)
     #train_loader, test_loader, train_dataset, test_dataset = get_data_loader((544, 814), 1, 8)
-
+    
     # Train the model
     num_epochs = 30
     for epoch in range(num_epochs):
