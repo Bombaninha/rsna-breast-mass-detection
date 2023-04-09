@@ -70,11 +70,11 @@ def augment_dataset(path):
                 
             elif img_class == '2':
                 flippedH = cv2.flip(processed, 1)
-                flippedV = cv2.flip(processed, 0)
+                #flippedV = cv2.flip(processed, 0)
                 #flippedD = cv2.flip(processed, -1)
                 
                 cv2.imwrite(class_path + '/' + patient_id + '_processedH.png', flippedH.astype(np.uint8))
-                cv2.imwrite(class_path + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
+                #cv2.imwrite(class_path + '/' + patient_id + '_processedV.png', flippedV.astype(np.uint8))
                 #cv2.imwrite(class_path + '/' + patient_id + '_processedD.png', flippedD.astype(np.uint8))
 
 

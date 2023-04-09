@@ -86,7 +86,7 @@ class CNN(nn.Module):
         x = self.relu(self.fc1(x))
         #x = self.relu(self.fc2(x))
         #x = self.fc3(x)
-        x = self.relu(self.fc2(x))
+        x = self.fc2(x)
 
         # x = self.relu(self.conv1(x))
         # x = self.pool(x)
@@ -158,20 +158,21 @@ if __name__ == "__main__":
         train_loss = 0.0
         train_correct = 0
         model.train()
-        for i, (images, labels) in enumerate(train_loader):
+        for batch_id, (images, labels) in enumerate(train_loader):
             images = images.to(device)
             labels = labels.to(device)
-            optimizer.zero_grad()
-            outputs = model(images)
 
-            loss = criterion(outputs, labels)
-            #loss = loss / accumulation_steps
-            loss.backward()
-            optimizer.step()
-            # if (i+1) % accumulation_steps == 0: # Wait for several backward steps
-            #     optimizer.step()                # Now we can do an optimizer step
-            #     optimizer.zero_grad()
-            #     #model.zero_grad() 
+            with torch.set_grad_enabled(True):
+                #optimizer.zero_grad()
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                loss = loss / accumulation_steps
+                loss.backward()
+                #optimizer.step()
+
+                if ((batch_id + 1) % accumulation_steps == 0) or (batch_id + 1 == len(train_loader)):
+                    optimizer.step()               
+                    optimizer.zero_grad()
 
             train_loss += loss.item() * images.size(0)
             _, predicted = torch.max(outputs.data, 1)
@@ -181,6 +182,8 @@ if __name__ == "__main__":
         train_loss = train_loss / len(train_dataset)
         train_accuracy = train_correct / len(train_dataset)
         
+        torch.cuda.empty_cache()
+
         predicted_lst = []
         labels_lst = []
 
