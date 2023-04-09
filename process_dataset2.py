@@ -123,7 +123,7 @@ if __name__ == "__main__":
                 os.mkdir('results/' + img_class)
 
             processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
-            processed = cv2.resize(processed, (512,512), interpolation=cv2.INTER_CUBIC)
+            processed = cv2.resize(processed, (1024,1024), interpolation=cv2.INTER_CUBIC)
             
             # if img_class == '2':
             #     if not os.path.exists('results/1/'):
