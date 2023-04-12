@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-import splitfolders
 import os
 
 # Define the transformation to apply to the images
@@ -49,21 +48,17 @@ class CNN(nn.Module):
         self.conv4 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv5 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
         self.conv6 = nn.Conv2d(64, 32, kernel_size=3, padding=1)
-        # self.conv1 = nn.Conv2d(num_channels, 32, kernel_size=3, padding=1)
-        # self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        # self.conv3 = nn.Conv2d(64, 32, kernel_size=3, padding=1)
 
-        self.pool = nn.MaxPool2d(kernel_size = (2,2), stride = (2,2))
-        # #self.pool = nn.MaxPool2d(2)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+        #self.pool2 = nn.AvgPool2d(kernel_size = (2,2), stride = (2,2))
 
-        # self.fc1 = nn.Linear(32 * (image_size[0] // 8) * (image_size[1] // 8), 512)
-        self.fc1 = nn.Linear(32 * (image_size[0] // 8) * (image_size[1] // 8), 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, num_classes)
+        self.fc1 = nn.Linear(32 * (image_size[0] // 8) * (image_size[1] // 8), 256, bias=True)
+        self.fc2 = nn.Linear(256, 128, bias=True)
+        self.fc3 = nn.Linear(128, num_classes, bias=True)
 
         self.relu = nn.ReLU()
-        self.dropout1 = nn.Dropout(p=0.10)
-        self.dropout2 = nn.Dropout(p=0.05)
+        self.softmax = nn.Softmax(dim=0)
+        self.dropout = nn.Dropout(p=0.1, inplace=False)
 
     def forward(self, x):
         x = self.relu(self.conv1(x))
@@ -76,12 +71,10 @@ class CNN(nn.Module):
         x = self.relu(self.conv6(x))
         x = self.pool(x)
         x = x.view(x.size(0), -1)
+        x = self.dropout(x)
         x = self.relu(self.fc1(x))
-        x = self.dropout1(x)
-        x = self.relu(self.fc2(x))
-        x = self.dropout2(x)
+        x = self.softmax(self.fc2(x))
         x = self.fc3(x)
-        #x = self.fc2(x)
 
         return x
 
@@ -89,7 +82,6 @@ if __name__ == "__main__":
 
     # Set device to GPU if available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
     class_names = os.listdir('output/train') # get the class names automatically using the folder names
     
     img_size = (1024, 1024) # 454x678 , 544x814 , 512x512 , 1024x1024
@@ -103,10 +95,8 @@ if __name__ == "__main__":
     model = CNN(img_size, n_channels, n_classes).to(device) 
 
     # Define the loss function and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # 0.001
-    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
-    #    factor=0.1, patience=10, threshold=0.0001, threshold_mode='abs')
+    criterion = nn.CrossEntropyLoss() 
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.8, weight_decay=0.75) # lr=0.001 | 0.003 | weight_decay = 0.9 | 0.8
 
     train_loader, test_loader, train_dataset, test_dataset, val_dataset, val_loader = get_data_loader(img_size, n_channels, n_batches, device)
     
@@ -129,9 +119,9 @@ if __name__ == "__main__":
                 #optimizer.step()
 
                 if ((batch_id + 1) % accumulation_steps == 0) or (batch_id + 1 == len(train_loader)):
-                    optimizer.step()               
+                    optimizer.step()
                     optimizer.zero_grad()
-
+                    
             train_loss += loss.item() * images.size(0)
             _, predicted = torch.max(outputs.data, 1)
             train_correct += (predicted == labels).sum().item()
